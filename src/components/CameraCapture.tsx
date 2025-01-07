@@ -2,6 +2,9 @@
 
 import { useRef, useState } from "react";
 import Tesseract from "tesseract.js";
+import cv from 'opencv.js';
+
+
 
 export default function CameraCapture() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -34,10 +37,21 @@ export default function CameraCapture() {
       if (ctx) {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const imageData = canvas.toDataURL("image/png");
-        processImage(imageData);
+        preprocessImage(imageData);
       }
     }
   };
+
+  const preprocessImage = (imageData: string) => {
+    const img = cv.imread(imageData)
+    cv.cvtColor(img, img, cv.COLOR_RGBA2GRAY) // Converter para escala de cinza
+    cv.GaussianBlur(img, img, new cv.Size(5, 5), 0) // Reduzir ruído com blur
+    cv.adaptiveThreshold(img, img, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 2) // Aumentar contraste
+    const processedImageData = cv.imencode('.png', img).toString()
+    img.delete() // Liberar memória
+    processImage(processedImageData)
+  }
+
 
   const processImage = async (imageData: string) => {
     setLoading(true)
