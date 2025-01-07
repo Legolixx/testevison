@@ -45,8 +45,13 @@ export default function CameraCapture() {
 
   const processImage = async () => {
     if (cropperInstance) {
+      // Obtém o canvas recortado
       const croppedCanvas = cropperInstance.getCroppedCanvas()
       const croppedImageData = croppedCanvas.toDataURL('image/png')
+      
+      // Atualiza o estado com a imagem recortada
+      setImageData(croppedImageData)
+
       setLoading(true)
       try {
         const result = await Tesseract.recognize(croppedImageData, 'eng', {
