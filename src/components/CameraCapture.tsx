@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Button } from "./ui/button";
 
 const CameraCapture = ({
   onCapture,
@@ -21,8 +22,11 @@ const CameraCapture = ({
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play(); // Garante que o vídeo será reproduzido
-        setIsCameraOn(true);
+        videoRef.current.onloadedmetadata = () => {
+          console.log("Video loaded successfully");
+          videoRef.current?.play();
+          setIsCameraOn(true);
+        };
       }
     } catch (err) {
       console.error("Error accessing camera:", err);
@@ -51,34 +55,28 @@ const CameraCapture = ({
     if (videoRef.current?.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
       stream.getTracks().forEach((track) => track.stop());
-      console.log("Camera stopped");
     }
     setIsCameraOn(false);
   };
-  
 
   return (
     <div className="camera-container">
       {isCameraOn ? (
-        <div>
+        <div className="flex flex-col items-center">
           <video
             ref={videoRef}
             autoPlay
             playsInline
-            className="w-full h-auto"
-            onError={() =>
-              alert("An error occurred while accessing the camera.")
-            }
+            className="w-full h-auto block rounded-md border"
           />
-
-          <button onClick={takePhoto} className="btn btn-primary mt-2">
+          <Button onClick={takePhoto} className="btn btn-primary mt-2">
             Capture Photo
-          </button>
+          </Button>
         </div>
       ) : (
-        <button onClick={startCamera} className="btn btn-primary">
+        <Button onClick={startCamera} variant="default">
           Open Camera
-        </button>
+        </Button>
       )}
     </div>
   );
