@@ -1,71 +1,68 @@
-"use client";
+'use client'
 
-import { useRef, useState } from "react";
-import Tesseract from "tesseract.js";
-import cv from 'opencv.js';
-
-
+import { useRef, useState } from 'react'
+import Tesseract from 'tesseract.js'
 
 export default function CameraCapture() {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [odometerValue, setOdometerValue] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [odometerValue, setOdometerValue] = useState<string>('')
+  const [loading, setLoading] = useState<boolean>(false)
 
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
-      });
+        video: { facingMode: 'environment' },
+      })
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.setAttribute("playsinline", "true");
+        videoRef.current.srcObject = stream
       }
     } catch (error) {
-      console.error("Erro ao acessar a câmera:", error);
+      console.error('Erro ao acessar a câmera:', error)
     }
-  };
-
-  const captureImage = () => {
-    const canvas = document.createElement("canvas");
-    const video = videoRef.current;
-
-    if (video) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext("2d");
-
-      if (ctx) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = canvas.toDataURL("image/png");
-        preprocessImage(imageData);
-      }
-    }
-  };
-
-  const preprocessImage = (imageData: string) => {
-    const img = cv.imread(imageData)
-    cv.cvtColor(img, img, cv.COLOR_RGBA2GRAY) // Converter para escala de cinza
-    cv.GaussianBlur(img, img, new cv.Size(5, 5), 0) // Reduzir ruído com blur
-    cv.adaptiveThreshold(img, img, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 2) // Aumentar contraste
-    const processedImageData = cv.imencode('.png', img).toString()
-    img.delete() // Liberar memória
-    processImage(processedImageData)
   }
 
+  const captureImage = () => {
+    const video = videoRef.current
+    if (!video) return
+
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+      // Converter para escala de cinza e aumentar contraste
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      const grayData = applyGrayscaleAndContrast(imageData)
+      ctx.putImageData(grayData, 0, 0)
+
+      const processedImage = canvas.toDataURL('image/png')
+      processImage(processedImage)
+    }
+  }
+
+  const applyGrayscaleAndContrast = (imageData: ImageData) => {
+    const data = imageData.data
+    for (let i = 0; i < data.length; i += 4) {
+      const gray = 0.3 * data[i] + 0.59 * data[i + 1] + 0.11 * data[i + 2]
+      data[i] = data[i + 1] = data[i + 2] = gray > 128 ? 255 : 0 // Binarização simples
+    }
+    return imageData
+  }
 
   const processImage = async (imageData: string) => {
     setLoading(true)
-    const worker = await Tesseract.createWorker() // Não precisa de await aqui
- // Não precisa de await aqui
-  
+    const worker = await Tesseract.createWorker()
+
     try {
       await worker.load()
       await worker.setParameters({
         tessedit_char_whitelist: '0123456789', // Permitir apenas números
       })
-  
+
       const result = await worker.recognize(imageData)
-      const text = result.data.text.trim() // Remover espaços em branco
+      const text = result.data.text.trim()
       setOdometerValue(text)
     } catch (error) {
       console.error('Erro ao processar a imagem:', error)
@@ -74,17 +71,15 @@ export default function CameraCapture() {
       setLoading(false)
     }
   }
-  
 
   return (
     <div className="flex flex-col items-center space-y-4">
       <video
         ref={videoRef}
         autoPlay
-        playsInline
-        className="w-full max-w-sm h-64 border border-gray-300 rounded-lg object-cover"
+        className="w-full max-w-sm border border-gray-300 rounded-lg"
       ></video>
-      <div className="flex space-x-4 z-10">
+      <div className="flex space-x-4">
         <button
           onClick={startCamera}
           className="px-4 py-2 bg-blue-500 text-white rounded-lg"
@@ -98,17 +93,14 @@ export default function CameraCapture() {
           Capturar Imagem
         </button>
       </div>
-      {loading ? (
-        <p>Processando imagem...</p>
-      ) : (
-        <input
-          type="text"
-          value={odometerValue}
-          readOnly
-          placeholder="Valor do odômetro"
-          className="w-full max-w-sm px-4 py-2 border border-gray-300 rounded-lg"
-        />
-      )}
+      <input
+        type="text"
+        value={odometerValue}
+        readOnly
+        placeholder="Valor do odômetro"
+        className="w-full max-w-sm px-4 py-2 border border-gray-300 rounded-lg"
+      />
+      {loading && <p>Processando imagem...</p>}
     </div>
-  );
+  )
 }
