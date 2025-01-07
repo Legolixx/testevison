@@ -2,11 +2,15 @@
 
 import { useRef, useState } from 'react'
 import Tesseract from 'tesseract.js'
+import Cropper from 'react-cropper'
+import 'cropperjs/dist/cropper.css'
 
 export default function CameraCapture() {
   const videoRef = useRef<HTMLVideoElement | null>(null)
+  const [cropperInstance, setCropperInstance] = useState<Cropper | null>(null) // Instância do Cropper
   const [odometerValue, setOdometerValue] = useState<string>('')
   const [loading, setLoading] = useState<boolean>(false)
+  const [imageData, setImageData] = useState<string | null>(null)
 
   const startCamera = async () => {
     try {
@@ -33,25 +37,29 @@ export default function CameraCapture() {
 
       if (ctx) {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-        const imageData = canvas.toDataURL('image/png')
-        processImage(imageData)
+        const capturedImage = canvas.toDataURL('image/png')
+        setImageData(capturedImage)
       }
     }
   }
 
-  const processImage = async (imageData: string) => {
-    setLoading(true)
-    try {
-      const result = await Tesseract.recognize(imageData, 'eng', {
-        logger: (m) => console.log(m), // Log para acompanhar o progresso do OCR
-      })
-      const text = result.data.text
-      const numbersOnly = text.replace(/\D/g, '') // Remove qualquer coisa que não seja número
-      setOdometerValue(numbersOnly)
-    } catch (error) {
-      console.error('Erro ao processar a imagem:', error)
-    } finally {
-      setLoading(false)
+  const processImage = async () => {
+    if (cropperInstance) {
+      const croppedCanvas = cropperInstance.getCroppedCanvas()
+      const croppedImageData = croppedCanvas.toDataURL('image/png')
+      setLoading(true)
+      try {
+        const result = await Tesseract.recognize(croppedImageData, 'eng', {
+          logger: (m) => console.log(m),
+        })
+        const text = result.data.text
+        const numbersOnly = text.replace(/\D/g, '') // Remove qualquer coisa que não seja número
+        setOdometerValue(numbersOnly)
+      } catch (error) {
+        console.error('Erro ao processar a imagem:', error)
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
@@ -77,6 +85,25 @@ export default function CameraCapture() {
           Capturar Imagem
         </button>
       </div>
+      
+      {imageData && !loading && (
+        <div className="relative">
+          <Cropper
+            src={imageData}
+            onInitialized={(instance) => setCropperInstance(instance)} // Salvar a instância do Cropper
+            style={{ width: '100%', maxWidth: '500px' }}
+            aspectRatio={16 / 9}
+            guides={false}
+          />
+          <button
+            onClick={processImage}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg"
+          >
+            Processar Imagem
+          </button>
+        </div>
+      )}
+      
       {loading ? (
         <p>Processando imagem...</p>
       ) : (
