@@ -10,10 +10,11 @@ export default function CameraCapture() {
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } }, // Câmera traseira
+        video: { facingMode: { ideal: "environment" } },
       });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.setAttribute("playsinline", "true"); // Forçar inline em navegadores que suportam
       }
     } catch (error) {
       console.error("Erro ao acessar a câmera:", error);
@@ -43,6 +44,7 @@ export default function CameraCapture() {
       <video
         ref={videoRef}
         autoPlay
+        playsInline
         className="w-full max-w-sm h-64 border border-gray-300 rounded-lg object-cover"
       ></video>
       <div className="flex space-x-4 z-10">
