@@ -2,7 +2,11 @@
 
 import { useRef, useState } from "react";
 
-const CameraCapture = ({ onCapture }: { onCapture: (imageData: string) => void }) => {
+const CameraCapture = ({
+  onCapture,
+}: {
+  onCapture: (imageData: string) => void;
+}) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
 
@@ -14,12 +18,15 @@ const CameraCapture = ({ onCapture }: { onCapture: (imageData: string) => void }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        await videoRef.current.play(); // Garante que o vídeo será reproduzido
         setIsCameraOn(true);
       }
     } catch (err) {
       console.error("Error accessing camera:", err);
+      alert("Unable to access the camera. Please check your permissions.");
     }
   };
 
@@ -44,15 +51,26 @@ const CameraCapture = ({ onCapture }: { onCapture: (imageData: string) => void }
     if (videoRef.current?.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
       stream.getTracks().forEach((track) => track.stop());
-      setIsCameraOn(false);
+      console.log("Camera stopped");
     }
+    setIsCameraOn(false);
   };
+  
 
   return (
     <div className="camera-container">
       {isCameraOn ? (
         <div>
-          <video ref={videoRef} autoPlay playsInline className="w-full h-auto" />
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            className="w-full h-auto"
+            onError={() =>
+              alert("An error occurred while accessing the camera.")
+            }
+          />
+
           <button onClick={takePhoto} className="btn btn-primary mt-2">
             Capture Photo
           </button>
