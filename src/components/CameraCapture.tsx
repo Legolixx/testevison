@@ -77,6 +77,7 @@ export default function CameraCapture() {
       <video
         ref={videoRef}
         autoPlay
+        playsInline
         className="w-full max-w-sm border border-gray-300 rounded-lg"
       ></video>
       <div className="flex space-x-4">
