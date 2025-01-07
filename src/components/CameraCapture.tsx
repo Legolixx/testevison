@@ -1,85 +1,71 @@
-"use client";
+'use client'
 
-import { useRef, useState } from "react";
-import { Button } from "./ui/button";
+import { useRef, useState } from 'react'
+import Image from 'next/image'
 
-const CameraCapture = ({
-  onCapture,
-}: {
-  onCapture: (imageData: string) => void;
-}) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [isCameraOn, setIsCameraOn] = useState(false);
+export default function CameraCapture() {
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const [capturedImage, setCapturedImage] = useState<string | null>(null)
 
   const startCamera = async () => {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      alert("Camera not supported on this device.");
-      return;
-    }
-
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          console.log("Video loaded successfully");
-          videoRef.current?.play();
-          setIsCameraOn(true);
-        };
+        videoRef.current.srcObject = stream
       }
-    } catch (err) {
-      console.error("Error accessing camera:", err);
-      alert("Unable to access the camera. Please check your permissions.");
+    } catch (error) {
+      console.error('Erro ao acessar a câmera:', error)
     }
-  };
+  }
 
-  const takePhoto = () => {
-    if (!videoRef.current) return;
+  const captureImage = () => {
+    const canvas = document.createElement('canvas')
+    const video = videoRef.current
 
-    const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
+    if (video) {
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+      const ctx = canvas.getContext('2d')
 
-    const context = canvas.getContext("2d");
-    if (context) {
-      context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      const imageData = canvas.toDataURL("image/png");
-      onCapture(imageData);
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+        const imageData = canvas.toDataURL('image/png')
+        setCapturedImage(imageData)
+        console.log('Dados da imagem capturada:', imageData)
+      }
     }
-
-    stopCamera();
-  };
-
-  const stopCamera = () => {
-    if (videoRef.current?.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((track) => track.stop());
-    }
-    setIsCameraOn(false);
-  };
+  }
 
   return (
-    <div className="camera-container">
-      {isCameraOn ? (
-        <div className="flex flex-col items-center">
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            className="w-full h-auto block rounded-md border"
-          />
-          <Button onClick={takePhoto} className="btn btn-primary mt-2">
-            Capture Photo
-          </Button>
-        </div>
-      ) : (
-        <Button onClick={startCamera} variant="default">
-          Open Camera
-        </Button>
+    <div className="flex flex-col items-center space-y-4">
+      <video
+        ref={videoRef}
+        autoPlay
+        className="w-full max-w-sm border border-gray-300 rounded-lg"
+      ></video>
+      <div className="flex space-x-4">
+        <button
+          onClick={startCamera}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg"
+        >
+          Abrir Câmera
+        </button>
+        <button
+          onClick={captureImage}
+          className="px-4 py-2 bg-green-500 text-white rounded-lg"
+        >
+          Capturar Imagem
+        </button>
+      </div>
+      {capturedImage && (
+        <Image
+          src={capturedImage}
+          alt="Imagem capturada"
+          className="w-full max-w-sm border border-gray-300 rounded-lg"
+          width={300} // Adicione o tamanho para o Next.js otimizar
+          height={200} // Adicione o tamanho para o Next.js otimizar
+        />
       )}
     </div>
-  );
-};
-
-export default CameraCapture;
+  )
+}
