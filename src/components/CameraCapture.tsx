@@ -1,59 +1,66 @@
-'use client'
+"use client";
 
-import { useRef, useState } from 'react'
-import Tesseract from 'tesseract.js'
+import { useRef, useState } from "react";
+import Tesseract from "tesseract.js";
 
 export default function CameraCapture() {
-  const videoRef = useRef<HTMLVideoElement | null>(null)
-  const [odometerValue, setOdometerValue] = useState<string>('')
-  const [loading, setLoading] = useState<boolean>(false)
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [odometerValue, setOdometerValue] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
 
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-      })
+        video: { facingMode: { ideal: "environment" } },
+      });
       if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        videoRef.current.setAttribute('playsinline', 'true')
+        videoRef.current.srcObject = stream;
+        videoRef.current.setAttribute("playsinline", "true");
       }
     } catch (error) {
-      console.error('Erro ao acessar a câmera:', error)
+      console.error("Erro ao acessar a câmera:", error);
     }
-  }
+  };
 
   const captureImage = () => {
-    const canvas = document.createElement('canvas')
-    const video = videoRef.current
+    const canvas = document.createElement("canvas");
+    const video = videoRef.current;
 
     if (video) {
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
-      const ctx = canvas.getContext('2d')
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
 
       if (ctx) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-        const imageData = canvas.toDataURL('image/png')
-        processImage(imageData)
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL("image/png");
+        processImage(imageData);
       }
     }
-  }
+  };
 
   const processImage = async (imageData: string) => {
     setLoading(true)
+    const worker = await Tesseract.createWorker() // Não precisa de await aqui
+ // Não precisa de await aqui
+  
     try {
-      const result = await Tesseract.recognize(imageData, 'eng', {
-        logger: (m) => console.log(m), // Log para acompanhar o progresso do OCR
+      await worker.load()
+      await worker.setParameters({
+        tessedit_char_whitelist: '0123456789', // Permitir apenas números
       })
-      const text = result.data.text
-      const numbersOnly = text.replace(/\D/g, '') // Remove qualquer coisa que não seja número
-      setOdometerValue(numbersOnly)
+  
+      const result = await worker.recognize(imageData)
+      const text = result.data.text.trim() // Remover espaços em branco
+      setOdometerValue(text)
     } catch (error) {
       console.error('Erro ao processar a imagem:', error)
     } finally {
+      await worker.terminate()
       setLoading(false)
     }
   }
+  
 
   return (
     <div className="flex flex-col items-center space-y-4">
@@ -89,5 +96,5 @@ export default function CameraCapture() {
         />
       )}
     </div>
-  )
+  );
 }
