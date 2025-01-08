@@ -9,7 +9,7 @@ export default function CameraCapture() {
   const [odometerValue, setOdometerValue] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [imageData, setImageData] = useState<string | null>(null);
-  const [zoom, setZoom] = useState<number>(1);
+ 
 
   // Define cropping frame size (percentage of video dimensions)
   const [cropFrame, setCropFrame] = useState({ width: 50, height: 30 });
@@ -101,7 +101,6 @@ export default function CameraCapture() {
           style={{
             width: "100%",
             height: "auto",
-            transform: `scale(${zoom})`,
             transformOrigin: "center center",
           }}
         />
@@ -151,16 +150,6 @@ export default function CameraCapture() {
         </label>
       </div>
 
-      {/* Zoom Slider */}
-      <input
-        type="range"
-        min="1"
-        max="3"
-        step="0.1"
-        value={zoom}
-        onChange={(e) => setZoom(parseFloat(e.target.value))}
-        className="w-1/2 mt-4"
-      />
 
       <div className="flex space-x-4 z-10">
         <button
