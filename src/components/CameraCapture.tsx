@@ -9,7 +9,10 @@ export default function CameraCapture() {
   const [odometerValue, setOdometerValue] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [imageData, setImageData] = useState<string | null>(null);
-  const [zoom, setZoom] = useState<number>(1); // Zoom state
+  const [zoom, setZoom] = useState<number>(1);
+
+  // Define cropping frame size (percentage of video dimensions)
+  const [cropFrame, setCropFrame] = useState({ width: 50, height: 30 });
 
   const startCamera = async () => {
     try {
@@ -30,32 +33,32 @@ export default function CameraCapture() {
     const video = videoRef.current;
 
     if (video) {
-      // Get video dimensions
       const videoWidth = video.videoWidth;
       const videoHeight = video.videoHeight;
 
-      // Apply zoom scaling to canvas size
-      canvas.width = videoWidth * zoom;
-      canvas.height = videoHeight * zoom;
+      // Calculate cropping frame position and size in pixels
+      const cropWidth = (cropFrame.width / 100) * videoWidth;
+      const cropHeight = (cropFrame.height / 100) * videoHeight;
+      const cropX = (videoWidth - cropWidth) / 2;
+      const cropY = (videoHeight - cropHeight) / 2;
 
-      // Get the 2d context
+      // Set canvas size to crop size
+      canvas.width = cropWidth;
+      canvas.height = cropHeight;
+
       const ctx = canvas.getContext("2d");
-
       if (ctx) {
-        // Apply zoom transformation to the context
-        ctx.scale(zoom, zoom);
-
-        // Calculate the offset needed to capture the center
-        const offsetX = (videoWidth * (zoom - 1)) / 2;
-        const offsetY = (videoHeight * (zoom - 1)) / 2;
-
-        // Draw the video to the canvas with the appropriate offset
+        // Draw only the cropped area of the video onto the canvas
         ctx.drawImage(
           video,
-          -offsetX,
-          -offsetY,
-          videoWidth * zoom,
-          videoHeight * zoom
+          cropX,
+          cropY,
+          cropWidth,
+          cropHeight,
+          0,
+          0,
+          cropWidth,
+          cropHeight
         );
 
         const capturedImage = canvas.toDataURL("image/png");
@@ -72,7 +75,7 @@ export default function CameraCapture() {
           logger: (m) => console.log(m),
         });
         const text = result.data.text;
-        const numbersOnly = text.replace(/\D/g, ""); // Remove qualquer coisa que não seja número
+        const numbersOnly = text.replace(/\D/g, "");
         setOdometerValue(numbersOnly);
       } catch (error) {
         console.error("Erro ao processar a imagem:", error);
@@ -84,10 +87,11 @@ export default function CameraCapture() {
 
   return (
     <div className="flex flex-col items-center space-y-4">
-      {/* Video feed with zoom applied via CSS */}
+      {/* Video feed with cropping frame */}
+      {/* Video feed with cropping frame */}
       <div
-        className="relative overflow-hidden"
-        style={{ width: "100%", height: "auto" }}
+        className="relative"
+        style={{ width: "100%", height: "auto", overflow: "hidden" }}
       >
         <video
           ref={videoRef}
@@ -95,10 +99,56 @@ export default function CameraCapture() {
           playsInline
           className="rounded-lg"
           style={{
+            width: "100%",
+            height: "auto",
             transform: `scale(${zoom})`,
             transformOrigin: "center center",
           }}
         />
+
+        {/* Cropping frame overlay */}
+        <div
+          className="absolute border-2 border-red-500 pointer-events-none"
+          style={{
+            width: `${cropFrame.width}%`,
+            height: `${cropFrame.height}%`,
+            top: `${(100 - cropFrame.height) / 2}%`,
+            left: `${(100 - cropFrame.width) / 2}%`,
+          }}
+        ></div>
+      </div>
+
+      {/* Sliders for adjusting crop frame size */}
+      <div className="flex flex-col space-y-2 mt-4">
+        <label>
+          Largura do corte: {cropFrame.width}%
+          <input
+            type="range"
+            min="10"
+            max="100"
+            step="1"
+            value={cropFrame.width}
+            onChange={(e) =>
+              setCropFrame({ ...cropFrame, width: parseInt(e.target.value) })
+            }
+            className="w-full"
+          />
+        </label>
+
+        <label>
+          Altura do corte: {cropFrame.height}%
+          <input
+            type="range"
+            min="10"
+            max="100"
+            step="1"
+            value={cropFrame.height}
+            onChange={(e) =>
+              setCropFrame({ ...cropFrame, height: parseInt(e.target.value) })
+            }
+            className="w-full"
+          />
+        </label>
       </div>
 
       {/* Zoom Slider */}
