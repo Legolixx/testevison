@@ -3,13 +3,13 @@
 import { useRef, useState } from "react";
 import Tesseract from "tesseract.js";
 import Image from "next/image";
+import preprocessImage from "@/utils/preprocessImage";
 
 export default function CameraCapture() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [odometerValue, setOdometerValue] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [imageData, setImageData] = useState<string | null>(null);
- 
 
   // Define cropping frame size (percentage of video dimensions)
   const [cropFrame, setCropFrame] = useState({ width: 50, height: 30 });
@@ -70,10 +70,19 @@ export default function CameraCapture() {
   const processImage = async () => {
     if (imageData) {
       setLoading(true);
+  
       try {
-        const result = await Tesseract.recognize(imageData, "eng", {
+        // Preprocess the image and get the processed data URL
+        const preprocessedImageData = await preprocessImage(imageData);
+  
+        // Display the preprocessed image
+        setImageData(preprocessedImageData);
+  
+        // Perform OCR using Tesseract on the preprocessed image
+        const result = await Tesseract.recognize(preprocessedImageData, "eng", {
           logger: (m) => console.log(m),
         });
+  
         const text = result.data.text;
         const numbersOnly = text.replace(/\D/g, "");
         setOdometerValue(numbersOnly);
@@ -84,7 +93,7 @@ export default function CameraCapture() {
       }
     }
   };
-
+  
   return (
     <div className="flex flex-col items-center space-y-4">
       {/* Video feed with cropping frame */}
@@ -149,7 +158,6 @@ export default function CameraCapture() {
           />
         </label>
       </div>
-
 
       <div className="flex space-x-4 z-10">
         <button
