@@ -11,7 +11,7 @@ async function preprocessImage(imageDataUrl: string): Promise<string> {
 
     // Process the image with sharp
     const processedBuffer = await sharp(imageBuffer)
-      .grayscale()
+
       .toBuffer();
 
     // Convert processed buffer back to data URL
