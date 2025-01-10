@@ -1,4 +1,4 @@
-'use server'
+"use server";
 
 import sharp from "sharp";
 
@@ -12,13 +12,16 @@ async function preprocessImage(imageDataUrl: string): Promise<string> {
     // Process the image with sharp
     const processedBuffer = await sharp(imageBuffer)
       .grayscale()
+      .modulate({ brightness: 1, saturation: 1 })
       .median(3)
       .normalize()
       .threshold(150)
       .toBuffer();
 
     // Convert processed buffer back to data URL
-    const processedImageDataUrl = `data:image/png;base64,${processedBuffer.toString("base64")}`;
+    const processedImageDataUrl = `data:image/png;base64,${processedBuffer.toString(
+      "base64"
+    )}`;
 
     return processedImageDataUrl;
   } catch (error) {
