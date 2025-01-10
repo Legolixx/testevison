@@ -13,7 +13,6 @@ async function preprocessImage(imageDataUrl: string): Promise<string> {
     const processedBuffer = await sharp(imageBuffer)
       .grayscale()
       .modulate({ brightness: 1, saturation: 1 })
-      .median(3)
       .normalize()
       .threshold(150)
       .toBuffer();
