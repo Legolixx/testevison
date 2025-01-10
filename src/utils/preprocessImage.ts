@@ -15,7 +15,7 @@ async function preprocessImage(imageDataUrl: string): Promise<string> {
       .modulate({ brightness: 1.2, saturation: 1 })
       .blur(1)
       .normalize()
-      .threshold(135)
+      .threshold(180)
       .toBuffer();
 
     // Convert processed buffer back to data URL
