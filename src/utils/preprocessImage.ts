@@ -1,62 +1,57 @@
 "use server";
 
+import sharp from "sharp";
 import cv from "opencv-ts";
 
-async function preprocessImageWithOpenCV(
-  imageDataUrl: string
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.src = imageDataUrl;
-    img.onload = () => {
-      // Criar canvas e context para desenhar a imagem
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return reject("Failed to get canvas context");
+async function preprocessImage(imageDataUrl: string): Promise<string> {
+  try {
+    // Step 1: Sharp preprocessing
+    const base64 = imageDataUrl.split(",")[1];
+    if (!base64) throw new Error("Invalid image data URL");
+    const imageBuffer = Buffer.from(base64, "base64");
 
-      ctx.drawImage(img, 0, 0);
-      const src = cv.imread(canvas);
+    const processedBuffer = await sharp(imageBuffer)
+      .grayscale()
+      .modulate({ brightness: 1.2, saturation: 1 })
+      .blur(1)
+      .normalize()
+      .threshold(135)
+      .toBuffer();
 
-      // Conversão para escala de cinza
-      cv.cvtColor(src, src, cv.COLOR_RGBA2GRAY);
+    // Convert processed buffer to an ImageData object for OpenCV
+    const sharpImage = new Image();
+    sharpImage.src = `data:image/png;base64,${processedBuffer.toString("base64")}`;
 
-      // Aplicação de filtro para remover ruído
-      cv.medianBlur(src, src, 5); // Alternativa: cv.GaussianBlur
+    return new Promise((resolve, reject) => {
+      sharpImage.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = sharpImage.width;
+        canvas.height = sharpImage.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject("Failed to get canvas context");
 
-      // Dilatação para preencher lacunas nos números
-      const kernel = cv.getStructuringElement(
-        cv.MORPH_RECT,
-        new cv.Size(3, 3),
-        new cv.Point(-1, -1)
-      );
-      cv.dilate(src, src, kernel);
+        ctx.drawImage(sharpImage, 0, 0);
+        const src = cv.imread(canvas);
 
-      // Binarização adaptativa
-      cv.adaptiveThreshold(
-        src,
-        src,
-        255,
-        cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv.THRESH_BINARY,
-        11,
-        2
-      );
+        // Step 2: Apply Morphological Closing with OpenCV
+        const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3), new cv.Point(-1, -1));
+        cv.morphologyEx(src, src, cv.MORPH_CLOSE, kernel, new cv.Point(-1, -1), 1, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
 
-      // Erosão leve para refinar o resultado
-      cv.erode(src, src, kernel);
+        // Step 3: Display or return the processed image
+        cv.imshow(canvas, src);
+        const finalImageDataUrl = canvas.toDataURL("image/png");
+        resolve(finalImageDataUrl);
 
-      // Exibir ou retornar a imagem processada
-      cv.imshow(canvas, src);
-      const processedImageDataUrl = canvas.toDataURL("image/png");
-      resolve(processedImageDataUrl);
+        // Cleanup
+        src.delete();
+      };
 
-      // Limpeza
-      src.delete();
-    };
-    img.onerror = (err) => reject(err);
-  });
+      sharpImage.onerror = (err) => reject(err);
+    });
+  } catch (error) {
+    console.error("Error during image preprocessing:", error);
+    throw error;
+  }
 }
 
-export default preprocessImageWithOpenCV;
+export default preprocessImage;
