@@ -14,7 +14,7 @@ async function preprocessImage(imageDataUrl: string): Promise<string> {
       .grayscale()
       .median(3)
       .normalize()
-      .threshold(180)
+      .threshold(150)
       .toBuffer();
 
     // Convert processed buffer back to data URL
