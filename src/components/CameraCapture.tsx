@@ -12,7 +12,7 @@ export default function CameraCapture() {
   const [imageData, setImageData] = useState<string | null>(null);
 
   // Define cropping frame size (percentage of video dimensions)
-  const [cropFrame, setCropFrame] = useState({ width: 50, height: 30 });
+  const [cropFrame, setCropFrame] = useState({ width: 53, height: 16 });
 
   const startCamera = async () => {
     try {
@@ -132,7 +132,7 @@ export default function CameraCapture() {
           Largura do corte: {cropFrame.width}%
           <input
             type="range"
-            min="10"
+            min="0"
             max="100"
             step="1"
             value={cropFrame.width}
