@@ -1,86 +1,62 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use server";
 
-import cv, { Mat, Rect } from "opencv-ts";
+import cv from "opencv-ts";
 
-async function preprocessImage(imageDataUrl: string): Promise<string> {
-  try {
-    // Convert data URL to ImageData
-    const base64 = imageDataUrl.split(",")[1];
-    if (!base64) throw new Error("Invalid image data URL");
-    const imageBuffer = Buffer.from(base64, "base64");
-
-    // Create an HTML Image element to load the image
+async function preprocessImageWithOpenCV(
+  imageDataUrl: string
+): Promise<string> {
+  return new Promise((resolve, reject) => {
     const img = new Image();
     img.src = imageDataUrl;
-    
-    // Wait for image to load
-    await new Promise((resolve) => (img.onload = resolve));
+    img.onload = () => {
+      // Criar canvas e context para desenhar a imagem
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject("Failed to get canvas context");
 
-    // Create a canvas to draw the image and extract ImageData
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d")!;
-    canvas.width = img.width;
-    canvas.height = img.height;
-    ctx.drawImage(img, 0, 0);
-    const imageData = ctx.getImageData(0, 0, img.width, img.height);
+      ctx.drawImage(img, 0, 0);
+      const src = cv.imread(canvas);
 
-    // Load image into OpenCV Mat
-    const src = cv.matFromImageData(imageData);
-    const gray = new cv.Mat();
-    const blurred = new cv.Mat();
-    const binary = new cv.Mat();
-    const kernel = new cv.Mat.ones(3, 3, cv.CV_8U);
+      // Conversão para escala de cinza
+      cv.cvtColor(src, src, cv.COLOR_RGBA2GRAY);
 
-    // Convert to grayscale
-    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+      // Aplicação de filtro para remover ruído
+      cv.medianBlur(src, src, 5); // Alternativa: cv.GaussianBlur
 
-    // Apply Gaussian blur to reduce noise
-    cv.GaussianBlur(gray, blurred, new cv.Size(3, 3), 0, 0, cv.BORDER_DEFAULT);
+      // Dilatação para preencher lacunas nos números
+      const kernel = cv.getStructuringElement(
+        cv.MORPH_RECT,
+        new cv.Size(3, 3),
+        new cv.Point(-1, -1)
+      );
+      cv.dilate(src, src, kernel);
 
-    // Apply adaptive thresholding
-    cv.adaptiveThreshold(
-      blurred,
-      binary,
-      255,
-      cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-      cv.THRESH_BINARY,
-      11, // Block size
-      2   // Constant subtracted from mean
-    );
+      // Binarização adaptativa
+      cv.adaptiveThreshold(
+        src,
+        src,
+        255,
+        cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv.THRESH_BINARY,
+        11,
+        2
+      );
 
-    // Apply morphological closing to fill gaps in digits
-    cv.morphologyEx(binary, binary, cv.MORPH_CLOSE, kernel, new cv.Point(-1, -1), 1, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
+      // Erosão leve para refinar o resultado
+      cv.erode(src, src, kernel);
 
-    // Convert processed image back to ImageData
-    const outputCanvas = document.createElement("canvas");
-    const outputCtx = outputCanvas.getContext("2d")!;
-    outputCanvas.width = binary.cols;
-    outputCanvas.height = binary.rows;
+      // Exibir ou retornar a imagem processada
+      cv.imshow(canvas, src);
+      const processedImageDataUrl = canvas.toDataURL("image/png");
+      resolve(processedImageDataUrl);
 
-    // Create ImageData from the OpenCV Mat
-    const outputImageData = new ImageData(
-      new Uint8ClampedArray(binary.data),
-      binary.cols,
-      binary.rows
-    );
-    outputCtx.putImageData(outputImageData, 0, 0);
-
-    // Convert output canvas to data URL
-    const processedImageDataUrl = outputCanvas.toDataURL("image/png");
-
-    // Clean up memory
-    src.delete();
-    gray.delete();
-    blurred.delete();
-    binary.delete();
-    kernel.delete();
-
-    return processedImageDataUrl;
-  } catch (error) {
-    console.error("Error during image preprocessing:", error);
-    throw error;
-  }
+      // Limpeza
+      src.delete();
+    };
+    img.onerror = (err) => reject(err);
+  });
 }
 
-export default preprocessImage;
+export default preprocessImageWithOpenCV;
